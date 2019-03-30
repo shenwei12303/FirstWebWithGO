@@ -1,6 +1,10 @@
 package views
 
-import "log"
+import (
+	"log"
+
+	"sw.com/FirstWebWithGO/models"
+)
 
 const (
 	AlertLvlError   = "danger"
@@ -18,6 +22,7 @@ type PublicError interface {
 
 type Data struct {
 	Alert *Alert
+	User  *models.User
 	Yield interface{}
 }
 

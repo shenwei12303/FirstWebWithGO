@@ -16,8 +16,9 @@ type galleryValFn func(*Gallery) error
 
 type Gallery struct {
 	gorm.Model
-	UserID uint   `gorm:"not null;index"`
-	Title  string `gorm:"not null"`
+	UserID uint    `gorm:"not null;index"`
+	Title  string  `gorm:"not null"`
+	Images []Image `gorm:"-"`
 }
 
 type GalleryService interface {
@@ -26,7 +27,10 @@ type GalleryService interface {
 
 type GalleryDB interface {
 	ByID(id uint) (*Gallery, error)
-	Create(gallary *Gallery) error
+	ByUserID(userID uint) ([]Gallery, error)
+	Create(gallery *Gallery) error
+	Update(gallery *Gallery) error
+	Delete(id uint) error
 }
 
 type galleryService struct {
@@ -49,7 +53,7 @@ func (gv *galleryValidator) Create(gallery *Gallery) error {
 		return err
 	}
 
-	return nil
+	return gv.GalleryDB.Create(gallery)
 }
 
 func (g *galleryGorm) Create(gallery *Gallery) error {
@@ -97,4 +101,64 @@ func (g *galleryGorm) ByID(id uint) (*Gallery, error) {
 		return nil, err
 	}
 	return &gallery, nil
+}
+
+func (gv *galleryValidator) Update(gallery *Gallery) error {
+	err := runGalleryValFns(gallery,
+		gv.userIDRequired,
+		gv.titleRequired)
+	if err != nil {
+		return err
+	}
+	return gv.GalleryDB.Update(gallery)
+}
+
+func (g *galleryGorm) Update(gallery *Gallery) error {
+	return g.db.Save(gallery).Error
+}
+
+func (gv *galleryValidator) nonZeroID(gallery *Gallery) error {
+	if gallery.ID <= 0 {
+		return ErrInvaildID
+	}
+	return nil
+}
+
+func (gv *galleryValidator) Delete(id uint) error {
+	var gallery Gallery
+	gallery.ID = id
+	err := runGalleryValFns(&gallery,
+		gv.nonZeroID)
+	if err != nil {
+		return err
+	}
+	return gv.GalleryDB.Delete(gallery.ID)
+}
+
+func (g *galleryGorm) Delete(id uint) error {
+	var gollery Gallery
+	gollery.ID = id
+	return g.db.Delete(&gollery).Error
+}
+
+func (g *galleryGorm) ByUserID(userID uint) ([]Gallery, error) {
+	var galleries []Gallery
+	db := g.db.Where("user_id = ?", userID)
+	if err := db.Find(&galleries).Error; err != nil {
+		return nil, err
+	}
+	return galleries, nil
+}
+
+func (g *Gallery) ImagesSplitN(n int) [][]Image {
+	ret := make([][]Image, n)
+	for i := 0; i < n; i++ {
+		ret[i] = make([]Image, 0)
+	}
+
+	for i, img := range g.Images {
+		bucket := i % n
+		ret[bucket] = append(ret[bucket], img)
+	}
+	return ret
 }
