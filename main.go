@@ -5,10 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/gorilla/csrf"
-
 	"sw.com/FirstWebWithGO/middleware"
-	"sw.com/FirstWebWithGO/rand"
 
 	"github.com/gorilla/mux"
 	"sw.com/FirstWebWithGO/controllers"
@@ -20,6 +17,7 @@ func main() {
 		"in production. This ensures that a .config file is "+
 		"provided before the application starts.")
 	flag.Parse()
+
 	cfg := LoadConfig(*boolPtr)
 	dbCfg := cfg.Database
 	services, err := models.NewServices(models.WithGorm(dbCfg.Dialect(), dbCfg.ConnectionInfo()),
@@ -56,13 +54,8 @@ func main() {
 	assetHandler = http.StripPrefix("/assets/", assetHandler)
 	r.PathPrefix("/assets").Handler(assetHandler)
 
-	b, err := rand.Bytes(32)
-	if err != nil {
-		panic(err)
-	}
-	csrfMw := csrf.Protect(b, csrf.Secure(cfg.IsProd()))
-
 	r.Handle("/", staticC.Home).Methods("GET")
+	r.Handle("/logout", requiredUserMw.ApplyFn(usersC.Logout)).Methods("POST")
 	r.Handle("/contact", staticC.Contact).Methods("GET")
 	r.Handle("/faq", staticC.Faq).Methods("GET")
 	r.HandleFunc("/signup", usersC.New).Methods("GET")
@@ -79,5 +72,5 @@ func main() {
 	r.HandleFunc("/cookietest", usersC.CookieTest).Methods("GET")
 	r.HandleFunc("/galleries/{id:[0-9]+}/images", requiredUserMw.ApplyFn(galleriesC.ImageUpload)).Methods("POST")
 	fmt.Printf("Starting the server on :%d...\n", cfg.Port)
-	http.ListenAndServe(fmt.Sprintf(":%d", cfg.Port), csrfMw(userMw.Apply(r)))
+	http.ListenAndServe(fmt.Sprintf(":%d", cfg.Port), userMw.Apply(r))
 }

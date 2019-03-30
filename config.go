@@ -22,6 +22,12 @@ type Config struct {
 	Database PostgresConfig `json:"database"`
 }
 
+type MailgunConfig struct {
+	APIKey       string `json:"api_key"`
+	PublicAPIKey string `json:"public_api_key"`
+	Domain       string `json:"domain"`
+}
+
 func (c PostgresConfig) Dialect() string {
 	return "postgres"
 }
