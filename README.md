@@ -1,2 +1,2 @@
 # FirstWebWithGO
-caddy+pgsql
+CentOS+caddy+GO+pgsql
